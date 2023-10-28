@@ -1,5 +1,6 @@
+use std::error::Error;
 use std::fs::*;
-use std::io::{Write, BufReader, BufRead, Error};
+use std::io::{Write, BufReader};
 
 #[repr(C)]
 struct Points{
@@ -11,41 +12,59 @@ struct Points{
     b : u8
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), Box<dyn Error>> {
+    let filepath = "pointcloudvoxel.obj";
+
     let bytes = read("data.txt").expect("File not found");
 
     let points: Vec<Points> = convert_to_points(bytes);
 
-    let mut out = File::create("maybe.obj")?;
-    write!(out, "v -0.3 -0.3 -0.3\n    #1a
-                v -0.3 0.3 -0.3\n     #2b
-                v 0.3 0.3 -0.3\n     #3c
-                v 0.3 -0.3 -0.3\n   #4d
-                v -0.3 -0.3 0.3\n   #5e
-                v -0.3 0.3 0.3\n    #6f
-                v 0.3 0.3 0.3\n     #7g
-                v 0.3 -0.3 0.3\n    #8h
-                f 1 2 3 4\n
-                f 1 5 6 2\n
-                f 5 6 7 8\n
-                f 7 3 4 8\n
-                f 1 4 8 5\n
-                f 2 6 7 3\n
-                "
-            )?;
+    let out = File::create(filepath)?;
 
-    let input = File::open("cube.txt")?;
-    let buffered = BufReader::new(input);
-
-    for line in buffered.lines() {
-        println!("{}", line?);
+    for(i, item) in points.iter().enumerate(){
+        create_object(&out, &points[i], i);
     }
 
     Ok(())
 
     // now have an array of all points with position and color
-    
+}
 
+fn create_object(mut out: &File, data: &Points, mut offset: usize) -> Result<(), Box<dyn Error>>
+{
+    let size_of_box = 0.3;
+    offset *= 8;
+    write!(out, "v {} {} {}\n
+                v {} {} {}\n
+                v {} {} {}\n
+                v {} {} {}\n
+                v {} {} {}\n
+                v {} {} {}\n
+                v {} {} {}\n
+                v {} {} {}\n
+                f {} {} {} {}\n
+                f {} {} {} {}\n
+                f {} {} {} {}\n
+                f {} {} {} {}\n
+                f {} {} {} {}\n
+                f {} {} {} {}\n",
+            data.x-size_of_box, data.y-size_of_box, data.z-size_of_box,
+            data.x-size_of_box, data.y+size_of_box, data.z-size_of_box,
+            data.x+size_of_box, data.y+size_of_box, data.z-size_of_box,
+            data.x+size_of_box, data.y-size_of_box, data.z-size_of_box,
+            data.x-size_of_box, data.y-size_of_box, data.z+size_of_box,
+            data.x-size_of_box, data.y+size_of_box, data.z+size_of_box,
+            data.x+size_of_box, data.y+size_of_box, data.z+size_of_box,
+            data.x+size_of_box, data.y-size_of_box, data.z+size_of_box,
+            1+offset, 2+offset, 3+offset, 4+offset,
+            1+offset, 5+offset, 6+offset, 2+offset,
+            5+offset, 6+offset, 7+offset, 8+offset,
+            7+offset, 3+offset, 4+offset, 8+offset,
+            1+offset, 4+offset, 8+offset, 5+offset,
+            2+offset, 6+offset, 7+offset, 3+offset
+        )?;
+
+    Result::Ok(())
 }
 
 fn convert_to_points(data: Vec<u8>) -> Vec<Points> {
